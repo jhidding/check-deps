@@ -6,7 +6,7 @@ authors = ["Johan Hidding <j.hidding@esciencecenter.nl>"]
 license = "Apache-2"
 
 [tool.poetry.dependencies]
-python = "^3.11"
+python = "^3.10"
 
 [tool.poetry.dev-dependencies]
 pdoc = "^12.3.0"
