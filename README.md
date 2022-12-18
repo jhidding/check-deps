@@ -1,10 +1,12 @@
 # A dependency checker in Async Python
+[![website](https://github.com/jhidding/check-deps/actions/workflows/main.yml/badge.svg)](https://github.com/jhidding/check-deps/actions/workflows/main.yml)
+[![Entangled badge](https://img.shields.io/badge/entangled-Use%20the%20source!-%2300aeff)](https://entangled.github.io/)
 
-Sometimes, when you have a project that uses many components there are no ways to systematically check if dependencies are installed. If you stick to a single programming language, this problem is better handled by a package manager. When you step outside the bounds of a single language however, there is no easy to use tool. Maybe you need some UNIX tools to be present along with utilities from Python and some scripts that run on top of Node.
+Sometimes, when you have a project that uses many components there are no easy ways to systematically check if dependencies are installed. If you stick to a single programming language, this problem is better handled by a package manager. When you step outside the bounds of a single language however, there is no easy to use tool. Maybe you need some UNIX tools to be present along with utilities from Python and some scripts that run on top of Node.
 
 The goal of this script is to check software dependencies for you. If you have some complicated setup which requires a combination of executables, libraries for different languages etc., this script can check if those are in order.
 
-You specify the dependencies in a `dependencies.ini` file, then this script checks them. You only need Python installed, nothing else for this script to work.
+You specify the dependencies in a `dependencies.ini` file, then this script checks them. You only need Python installed, nothing else for this script to work. [You simply ship this script with your distribution.](https://github.com/jhidding/check-deps/blob/main/check-deps)
 
 # Tutorial
 Suppose your project needs a specific version of GNU Awk. According to the GNU guidelines for writing command-line applications, every program should support the `--version` flag. If we run `awk --version`, what do we get?
@@ -108,7 +110,7 @@ cd example/template; ../../check-deps
 
 
 # Implementation
-Because this script needs to work stand-alone, that means that some of the functionality here would be much easier implemented using other packages, but I simply can't.
+Because this script needs to work stand-alone, that means that some of the functionality here would be much easier implemented using other packages, however I'm limited to what a standard Python install has to offer.
 
 I'll start with a bit of version logic, and then show how this script runs the checks in parallel using `asyncio`.
 
@@ -124,28 +126,6 @@ T = TypeVar("T")
 ``` {.python file=check-deps header=1}
 #!/usr/bin/env python3
 from __future__ import annotations
-
-<<imports>>
-<<boilerplate>>
-
-<<relation>>
-<<version>>
-<<version-constraint>>
-<<parsing>>
-<<running>>
-```
-
-``` {.python file=checkdeps/__init__.py}
-from __future__ import annotations
-
-import subprocess
-proc_eval = subprocess.run(
-    ["awk", "-f", "eval_shell_pass.awk"],
-    input=open("README.md", "rb").read(), capture_output=True)
-proc_label = subprocess.run(
-    ["awk", "-f", "noweb_label_pass.awk"],
-    input=proc_eval.stdout, capture_output=True)
-__doc__ = proc_label.stdout.decode()
 
 <<imports>>
 <<boilerplate>>
@@ -530,4 +510,33 @@ if __name__ == "__main__":
     asyncio.run(main())
 ```
 
+# Literate Programming
+This script is composed from the code blocks in this README using [Entangled](https://entangled.github.io). To generate the HTML renedered documentation, I used [Pdoc](https://pdoc.dev/) in conjunction with some Awk scripts.
+
+Note, all output from the shell scripts in the tutorial are expanded by Awk in CI. That means that the tutorial doubles up for integration test as well.
+
+``` {.python file=checkdeps/__init__.py}
+from __future__ import annotations
+
+import subprocess
+proc_eval = subprocess.run(
+    ["awk", "-f", "eval_shell_pass.awk"],
+    input=open("README.md", "rb").read(), capture_output=True)
+proc_label = subprocess.run(
+    ["awk", "-f", "noweb_label_pass.awk"],
+    input=proc_eval.stdout, capture_output=True)
+__doc__ = proc_label.stdout.decode()
+
+<<imports>>
+<<boilerplate>>
+
+<<relation>>
+<<version>>
+<<version-constraint>>
+<<parsing>>
+<<running>>
+```
+
 # API Documentation
+While this script strictly speaking is in no need for API docs, here they are anyway.
+
