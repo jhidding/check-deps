@@ -108,6 +108,7 @@ template = pip
 cd example/template; ../../check-deps
 ```
 
+That covers all the features of this script. The rest of this README is the actual implementation of `check-deps`.
 
 # Implementation
 Because this script needs to work stand-alone, that means that some of the functionality here would be much easier implemented using other packages, however I'm limited to what a standard Python install has to offer.
