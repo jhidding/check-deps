@@ -221,6 +221,13 @@ class VersionTest:
     _lock: asyncio.Lock = field(default_factory=asyncio.Lock)
     _done: bool = False
 
+    def print_formatted(self, msg):
+        prefix = f"{self.name} {self.require}"
+        print(f"{prefix:25}: {msg}")
+
+    def print_not_found(self):
+        self.print_formatted("not found")
+
     @async_cache
     async def run(self, recurse):
         for dep in self.depends:
@@ -228,14 +235,13 @@ class VersionTest:
                 return Result(self, False,
                               failure_text=f"Failed dependency: {dep}")
 
-        col1 = f"{self.name} {self.require}"
         proc = await asyncio.create_subprocess_shell(
             self.get_version,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE)
         (stdout, stderr) = await proc.communicate()
         if proc.returncode != 0:
-            print(f"{col1:25}: not found")
+            self.print_not_found()
             return Result(
                 self,
                 success=False,
@@ -243,17 +249,22 @@ class VersionTest:
         try:
             if self.pattern is not None:
                 m = re.match(self.pattern, stdout.decode())
-                out, _ = parse_version(m.group(1).strip())
+                if m is not None:
+                    out, _ = parse_version(m.group(1).strip())
+                else:
+                    self.print_not_found()
+                    msg = f"No regex match on pattern '{self.pattern}'"
+                    return Result(self, False, failure_text=msg)
             else:
                 out, _ = parse_version(stdout.decode().strip())
         except ConfigError as e:
             return Result(self, False, failure_text=str(e))
 
         if self.require(out):
-            print(f"{col1:25}: {str(out):10} Ok")
+            self.print_formatted(f"{str(out):10} Ok")
             return Result(self, True)
         else:
-            print(f"{col1:25}: {str(out):10} Fail")
+            self.print_formatted(f"{str(out):10} Fail")
             return Result(self, False, failure_text="Too old.",
                           found_version=out)
 # ~\~ end
