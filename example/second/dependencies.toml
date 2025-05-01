@@ -1,0 +1,13 @@
+# ~/~ begin <<README.md#example/second/dependencies.toml>>[init]
+[awk]
+require = ">=5"
+get_version = "awk --version"
+pattern = "GNU Awk (.*), API .*"
+suggestion_text = "This should be available from your package manager."
+
+[make]
+require = ">=4"
+get_version = "make --version"
+pattern = "GNU Make (.*)"
+suggestion_text = "This should be available from your package manager."
+# ~/~ end

@@ -6,7 +6,7 @@ Sometimes, when you have a project that uses many components there are no easy w
 
 The goal of this script is to check software dependencies for you. If you have some complicated setup which requires a combination of executables, libraries for different languages etc., this script can check if those are in order.
 
-You specify the dependencies in a `dependencies.ini` file, then this script checks them. You only need Python installed, nothing else for this script to work. [You simply ship this script with your distribution.](https://github.com/jhidding/check-deps/blob/main/check-deps)
+You specify the dependencies in a `dependencies.toml` file, then this script checks them. You only need Python installed, nothing else for this script to work. [You simply ship this script with your distribution.](https://github.com/jhidding/check-deps/blob/main/check-deps)
 
 # Tutorial
 Suppose your project needs a specific version of GNU Awk. According to the GNU guidelines for writing command-line applications, every program should support the `--version` flag. If we run `awk --version`, what do we get?
@@ -17,12 +17,12 @@ awk --version
 
 That's a lot of information, but all we need is a version number. From all that output we need to extract a version number, which is best done by regex. Let's ask for an impossible version:
 
-``` {.ini file=example/first/dependencies.ini}
+``` {.toml file=example/first/dependencies.toml}
 [awk]
-require = >=6
-get_version = awk --version
-pattern = GNU Awk (.*), API: .*
-suggestion_text = This should be available from your package manager.
+require = ">=6"
+get_version = "awk --version"
+pattern = "GNU Awk (.*), API .*"
+suggestion_text = "This should be available from your package manager."
 ```
 
 Now run `check-deps`
@@ -33,18 +33,18 @@ cd example/first; ../../check-deps
 
 The output of `check-deps`, out of necessity, is the most spectacular when a problem is detected. For a second example let's try one that succeeds. We add GNU Make to our dependencies.
 
-``` {.ini file=example/second/dependencies.ini}
+``` {.toml file=example/second/dependencies.toml}
 [awk]
-require = >=5
-get_version = awk --version
-pattern = GNU Awk (.*), API: .*
-suggestion_text = This should be available from your package manager.
+require = ">=5"
+get_version = "awk --version"
+pattern = "GNU Awk (.*), API .*"
+suggestion_text = "This should be available from your package manager."
 
 [make]
-require = >=4
-get_version = make --version
-pattern = GNU Make (.*)
-suggestion_text = This should be available from your package manager.
+require = ">=4"
+get_version = "make --version"
+pattern = "GNU Make (.*)"
+suggestion_text = "This should be available from your package manager."
 ```
 
 ``` {.bash .eval}
@@ -54,24 +54,24 @@ cd example/second; ../../check-deps
 ## Dependencies
 Now for some Python packages. First we need to ensure that the correct version of Python in installed. This follows the pattern that we saw before.
 
-``` {.ini file=example/depends/dependencies.ini #example-depends}
+``` {.toml file=example/depends/dependencies.toml #example-depends}
 [python3]
-require = >=3.12
-get_version = python3 --version
-pattern = Python (.*)
-suggestion_text = This is a problem. The easiest is probably to install Anaconda from https://www.anaconda.com/.
+require = ">=3.12"
+get_version = "python3 --version"
+pattern = "Python (.*)"
+suggestion_text = "This is a problem. The easiest is probably to install Anaconda from https://www.anaconda.com/."
 ```
 
 To check the version of an installed package we may use `pip`.
 
-``` {.ini #example-depends}
+``` {.toml #example-depends}
 [numpy]
-require = >=1.0
-get_version = pip show numpy | grep "Version:"
-pattern = Version: (.*)
-suggestion_text = This is a Python package that can be installed through pip.
-suggestion = pip install numpy
-depends = python3
+require = ">=1.0"
+get_version = "pip show numpy | grep 'Version:'"
+pattern = "Version: (.*)"
+suggestion_text = "This is a Python package that can be installed through pip."
+suggestion = "pip install numpy"
+depends = "python3"
 ```
 
 Now `check-deps` knows to check for Python before checking for `numpy`.
@@ -85,23 +85,23 @@ Once we ask for one Python package, it is not so strange to ask for more. In tha
 ## Templates
 Because we may need many Python packages, it is possible to define a template. The template defines all the fields that we would expect from a normal entry, but uses Python formating syntax to define some wildcards. These wildcards are interpolated using values given at instantiation of a template. In this case we only ask for `name`, but this key is not fixed. Then the output of the template is merged with the specifics. If keys clash, the instance overrules the template's defaults.
 
-``` {.ini file=example/template/dependencies.ini}
-[template:pip]
-get_version = pip show {name} | grep "Version:"
-pattern = Version: (.*)
-suggestion_text = This is a Python package that can be installed through pip.
-suggestion = pip install {name}
-depends = python3
+``` {.toml file=example/template/dependencies.toml}
+[template.pip]
+get_version = "pip show {name} | grep 'Version:'"
+pattern = "Version: (.*)"
+suggestion_text = "This is a Python package that can be installed through pip."
+suggestion = "pip install {name}"
+depends = "python3"
 
 [python3]
-require = >=3.8
-get_version = python3 --version
-pattern = Python (.*)
-suggestion_text = This is a problem. The easiest is probably to install Anaconda from https://www.anaconda.com/.
+require = ">=3.8"
+get_version = "python3 --version"
+pattern = "Python (.*)"
+suggestion_text = "This is a problem. The easiest is probably to install Anaconda from https://www.anaconda.com/."
 
 [numpy]
-require = >=1.0
-template = pip
+require = ">=1.0"
+template = "pip"
 ```
 
 ``` {.bash .eval}
@@ -124,9 +124,12 @@ class ConfigError(Exception):
 T = TypeVar("T")
 ```
 
-``` {.python file=check-deps header=1}
+``` {.python file=check-deps header=1 mode=755}
 #!/usr/bin/env python3
 from __future__ import annotations
+
+# If you make changes to this file, please consider contributing
+# to: https://github.com/jhidding/check-deps
 
 <<imports>>
 <<boilerplate>>
@@ -143,7 +146,7 @@ We use a lot of things that should be in the standard library, chiefly typing an
 
 ``` {.python #imports}
 import sys
-import configparser
+import tomllib
 from dataclasses import dataclass, field
 from typing import Optional, List, Mapping, Tuple, Callable, TypeVar
 from enum import Enum
@@ -193,8 +196,10 @@ class Version:
 
     <<version-methods>>
 ```
+
 <details>
 <summary>Implementation of `Version` operators</summary>
+
 ``` {.python #version-methods}
 def __lt__(self, other):
     for n, m in zip(self.number, other.number):
@@ -230,6 +235,7 @@ def __ne__(self, other):
 def __str__(self):
     return ".".join(map(str, self.number)) + (self.extra or "")
 ```
+
 </details>
 
 A combination of a `Version` with a `Relation` form a `VersionConstraint`. Such a constraint can be called with another `Version` which should give a `bool`.
@@ -253,6 +259,7 @@ Now, we also need to be able to read a version constraint from input.
 Each parser takes a `str` and returns a tuple of `(value, str)`, where the second part of the tuple is the text that is not yet parsed.
 
 <details><summary>Parsing version constraints</summary>
+
 ``` {.python #parsing}
 def split_at(split_chars: str, x: str) -> Tuple[str, str]:
     """Tries to split at character `x`. Returns a 2-tuple of the string
@@ -323,6 +330,7 @@ def parse_version_constraint(x: str) -> Tuple[VersionConstraint, str]:
     version, x = parse_version(x)
     return VersionConstraint(version, relation), x
 ```
+
 </details>
 
 ## Running
@@ -432,8 +440,11 @@ class VersionTest:
 
 ``` {.python #running}
 def parse_config(name: str, config: Mapping[str, str], templates):
-    if "template" in config:
+    if "template" in config.keys():
         _config = {}
+        if config["template"] not in templates.keys():
+            raise ConfigError(f"Template {config['template']} not found. Templates: {list(templates.keys())}")
+
         for k, v in templates[config["template"]].items():
             if isinstance(v, str):
                 _config[k] = v.format(name=name)
@@ -481,13 +492,13 @@ def indent(prefix: str):
 
 ``` {.python #running}
 async def main():
-    config = configparser.ConfigParser()
-    config.read("dependencies.ini")
+    config = tomllib.load(open("dependencies.toml", "rb"))
 
-    templates = {
-        name[9:]: config[name]
-        for name in config if name.startswith("template:")
-    }
+    if "template" in config.keys():
+        templates = config["template"]
+        del config["template"]
+    else:
+        templates = dict()
 
     try:
         tests = {

@@ -1,5 +1,4 @@
-# ~\~ language=Python filename=checkdeps/__init__.py
-# ~\~ begin <<README.md|checkdeps/__init__.py>>[init]
+# ~/~ begin <<README.md#checkdeps/__init__.py>>[init]
 from __future__ import annotations
 
 import subprocess
@@ -11,9 +10,9 @@ proc_label = subprocess.run(
     input=proc_eval.stdout, capture_output=True)
 __doc__ = proc_label.stdout.decode()
 
-# ~\~ begin <<README.md|imports>>[init]
+# ~/~ begin <<README.md#imports>>[init]
 import sys
-import configparser
+import tomllib
 from dataclasses import dataclass, field
 from typing import Optional, List, Mapping, Tuple, Callable, TypeVar
 from enum import Enum
@@ -22,17 +21,17 @@ import re
 from contextlib import contextmanager, redirect_stdout
 import textwrap
 import io
-# ~\~ end
-# ~\~ begin <<README.md|boilerplate>>[init]
+# ~/~ end
+# ~/~ begin <<README.md#boilerplate>>[init]
 assert sys.version_info[0] == 3, "This script only works with Python 3."
 
 class ConfigError(Exception):
     pass
 
 T = TypeVar("T")
-# ~\~ end
+# ~/~ end
 
-# ~\~ begin <<README.md|relation>>[init]
+# ~/~ begin <<README.md#relation>>[init]
 class Relation(Enum):
     """Encodes ordinal relations among versions. Currently six operators are
     supported: `>=`, `<=`, `<`, `>`, `==`, `!=`.""" 
@@ -51,8 +50,8 @@ class Relation(Enum):
             Relation.GT: ">",
             Relation.EQ: "==",
             Relation.NE: "!="}[self]
-# ~\~ end
-# ~\~ begin <<README.md|version>>[init]
+# ~/~ end
+# ~/~ begin <<README.md#version>>[init]
 @dataclass
 class Version:
     """Stores a version in the form of a tuple of ints and an optional string extension.
@@ -60,7 +59,7 @@ class Version:
     number: tuple[int, ...]
     extra: Optional[str]
 
-    # ~\~ begin <<README.md|version-methods>>[init]
+    # ~/~ begin <<README.md#version-methods>>[init]
     def __lt__(self, other):
         for n, m in zip(self.number, other.number):
             if n < m:
@@ -94,9 +93,9 @@ class Version:
 
     def __str__(self):
         return ".".join(map(str, self.number)) + (self.extra or "")
-    # ~\~ end
-# ~\~ end
-# ~\~ begin <<README.md|version-constraint>>[init]
+    # ~/~ end
+# ~/~ end
+# ~/~ begin <<README.md#version-constraint>>[init]
 @dataclass
 class VersionConstraint:
     """A VersionConstraint is a product of a `Version` and a `Relation`."""
@@ -109,8 +108,8 @@ class VersionConstraint:
 
     def __str__(self):
         return f"{self.relation}{self.version}"
-# ~\~ end
-# ~\~ begin <<README.md|parsing>>[init]
+# ~/~ end
+# ~/~ begin <<README.md#parsing>>[init]
 def split_at(split_chars: str, x: str) -> Tuple[str, str]:
     """Tries to split at character `x`. Returns a 2-tuple of the string
     before and after the given separator."""
@@ -179,8 +178,8 @@ def parse_version_constraint(x: str) -> Tuple[VersionConstraint, str]:
     relation, x = parse_relation(x)
     version, x = parse_version(x)
     return VersionConstraint(version, relation), x
-# ~\~ end
-# ~\~ begin <<README.md|running>>[init]
+# ~/~ end
+# ~/~ begin <<README.md#running>>[init]
 def async_cache(f):
     """Caches results from the `async` function `f`. This assumes `f` is a
     member of a class, where we have `_lock`, `_result` and `_done` members
@@ -193,8 +192,8 @@ def async_cache(f):
             self._done = True
             return self._result
     return g
-# ~\~ end
-# ~\~ begin <<README.md|running>>[1]
+# ~/~ end
+# ~/~ begin <<README.md#running>>[1]
 @dataclass
 class Result:
     test: VersionTest
@@ -204,8 +203,8 @@ class Result:
 
     def __bool__(self):
         return self.success
-# ~\~ end
-# ~\~ begin <<README.md|running>>[2]
+# ~/~ end
+# ~/~ begin <<README.md#running>>[2]
 @dataclass
 class VersionTest:
     name: str
@@ -267,11 +266,14 @@ class VersionTest:
             self.print_formatted(f"{str(out):10} Fail")
             return Result(self, False, failure_text="Too old.",
                           found_version=out)
-# ~\~ end
-# ~\~ begin <<README.md|running>>[3]
+# ~/~ end
+# ~/~ begin <<README.md#running>>[3]
 def parse_config(name: str, config: Mapping[str, str], templates):
-    if "template" in config:
+    if "template" in config.keys():
         _config = {}
+        if config["template"] not in templates.keys():
+            raise ConfigError(f"Template {config['template']} not found. Templates: {list(templates.keys())}")
+
         for k, v in templates[config["template"]].items():
             if isinstance(v, str):
                 _config[k] = v.format(name=name)
@@ -299,8 +301,8 @@ def parse_config(name: str, config: Mapping[str, str], templates):
         suggestion=_config.get("suggestion", None),
         depends=deps,
         template=_config.get("template", None))
-# ~\~ end
-# ~\~ begin <<README.md|running>>[4]
+# ~/~ end
+# ~/~ begin <<README.md#running>>[4]
 @contextmanager
 def indent(prefix: str):
     f = io.StringIO()
@@ -308,16 +310,16 @@ def indent(prefix: str):
         yield
     output = f.getvalue()
     print(textwrap.indent(output, prefix), end="")
-# ~\~ end
-# ~\~ begin <<README.md|running>>[5]
+# ~/~ end
+# ~/~ begin <<README.md#running>>[5]
 async def main():
-    config = configparser.ConfigParser()
-    config.read("dependencies.ini")
+    config = tomllib.load(open("dependencies.toml", "rb"))
 
-    templates = {
-        name[9:]: config[name]
-        for name in config if name.startswith("template:")
-    }
+    if "template" in config.keys():
+        templates = config["template"]
+        del config["template"]
+    else:
+        templates = dict()
 
     try:
         tests = {
@@ -350,5 +352,5 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
-# ~\~ end
-# ~\~ end
+# ~/~ end
+# ~/~ end
