@@ -24,8 +24,8 @@ jobs:
           python-version-file: .github/python-version.txt
 
       # ADJUST THIS: install all dependencies (including pdoc)
-      - run: pip install poetry
-      - run: poetry install
+      - run: pip install uv
+      - run: uv sync
       # ADJUST THIS: build your documentation into docs/.
       # We use a custom build script for pdoc itself, ideally you just run `pdoc -o docs/ ...` here.
       - run: make docs
